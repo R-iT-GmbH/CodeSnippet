@@ -2,10 +2,11 @@
 
 # Changelog #
 # 27.05.2021 Tobias Nawrocki: Akualisierung auf DSU 1.9.1.0 inkl. Pfadanpassungen; Download der Notification Bridge integriert
+# 15.10.2021 Tobias Nawrocki: Akualisierung auf DSU 1.9.2.0 und Wechsel von Invoke-WebRequest zu System.Net.WebClient
 
 # Aktuelle Version manuell eintragen, auf genaue Version achten:
-$currentDSUversion = "1.9.1.0"
-$downloadDSU = "https://dl.dell.com/FOLDER07144386M/1/Systems-Management_Application_55R7T_WN64_1.9.1.0_A00.EXE"
+$currentDSUversion = "1.9.2.0"
+$downloadDSU = "https://dl.dell.com/FOLDER07525263M/1/Systems-Management_Application_5C2CW_WN64_1.9.2.0_A00.EXE"
 $downloadNotificationBridge = "https://bitbucket.org/paulcsiki/notification-bridge-plugin/downloads/Notification%20Bridge%201.3.zip"
 
 # Pfade definieren
