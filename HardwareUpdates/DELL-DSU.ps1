@@ -86,7 +86,7 @@ $checkDSU =
                 $WebClient.DownloadFile("$downloadDSU","$pathTempDownload\DSUSetup.exe")
                 Start-Sleep -s 10
                 & "$pathTempDownload\DSUSetup.exe" /s
-                Start-Sleep -s 60
+                Start-Sleep -s 210
                 $vorherigerInstallationsversuch = "Ja"
                 & $checkDSU
             }
