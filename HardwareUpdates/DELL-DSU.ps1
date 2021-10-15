@@ -18,6 +18,8 @@ $pathDsuData = "$pathDsuRoot\dell_dup"
 $pathDsuLog = "$pathDsuRoot\Log.txt"
 $pathDsuLogArchive = "$pathDsuData\Log-Archiv"
 
+$WebClient = New-Object System.Net.WebClient
+
 # Ordnerstruktur anlegen, falls nicht vorhanden
 
 If(!(Test-Path $pathDsuLogArchive))
@@ -45,7 +47,7 @@ $checkNotificationBridge =
     {
         # Notification Bridge herunterladen
         Write-Host "Notification Bridge nicht vorhanden, beginne Download"-ForegroundColor Green
-        Invoke-WebRequest $downloadNotificationBridge -OutFile "$pathTempDownload\NotificationBridge.zip"
+        $WebClient.DownloadFile("$downloadNotificationBridge","$pathTempDownload\NotificationBridge.zip")
         Start-Sleep -s 10
         Expand-Archive "$pathTempDownload\NotificationBridge.zip" -DestinationPath $pathNotificationBridge
         Rename-Item "$pathNotificationBridge\NotificationBridge.exe" "$pathNotificationBridge\Notify.exe"
@@ -80,7 +82,7 @@ $checkDSU =
                 # DSU herunterladen und installieren
                 & "$pathNotificationBridge\Notify.exe" -p 0 -t "DSU nicht aktuell, beginne Aktualisierung."
                 Write-Host "DSU nicht aktuell, beginne Aktualisierung."-ForegroundColor Green
-                Invoke-WebRequest $downloadDSU -OutFile "$pathTempDownload\DSUSetup.exe"
+                $WebClient.DownloadFile("$downloadDSU","$pathTempDownload\DSUSetup.exe")
                 Start-Sleep -s 10
                 & "$pathTempDownload\DSUSetup.exe" /s
                 Start-Sleep -s 60
@@ -104,7 +106,7 @@ $checkDSU =
             # DSU herunterladen und installieren
             & "$pathNotificationBridge\Notify.exe" -p 0 -t "DSU nicht vorhanden, beginne Download."
             Write-Host "DSU nicht vorhanden, beginne Download."-ForegroundColor Green
-            Invoke-WebRequest $downloadDSU -OutFile "$pathTempDownload\DSUSetup.exe"
+            $WebClient.DownloadFile("$downloadDSU","$pathTempDownload\DSUSetup.exe")
             Start-Sleep -s 10
             & "$pathTempDownload\DSUSetup.exe" /s
             Start-Sleep -s 60

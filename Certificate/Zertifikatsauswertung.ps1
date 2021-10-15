@@ -14,6 +14,9 @@ $outputFile = $outputPath+"\Zertifikate.csv"
 #Zertifikate abfragen und Ausgabe formatieren
 $CertList = Get-ChildItem -Path cert:\LocalMachine\My -Recurse | Select-Object Subject, Issuer, NotAfter
 
+#CN entfernen
+#$CertList = $CertList -replace 'CN=',''
+
 #Zerifikate in CSV-Datei exportieren
 $CertList | Export-Csv $outputFile -NoTypeInformation
 
