@@ -1,6 +1,6 @@
 # Windows Defender Auswertung
-# Niklas Zistler 07.05.2020
-# Version: 1.0
+# Niklas Zistler 27.10.2021
+# Version: 1.1
 # Letzte Änderung durch: Niklas Zistler
 
 #Variablen
