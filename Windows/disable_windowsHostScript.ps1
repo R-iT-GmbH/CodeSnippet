@@ -1,0 +1,2 @@
+if((Test-Path -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings") -ne $true) {  New-Item "HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings" -force -ea SilentlyContinue };
+New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings' -Name 'Enabled' -Value 0 -PropertyType DWord -Force -ea SilentlyContinue;
