@@ -1,0 +1,8 @@
+// Session duration 
+// Lists the duration and connection type of each user's connections. 
+// The "State" field provides information on the connection stage of an actitivity.
+// The delta between "Connected" and "Completed" provides the connection duration.
+WVDConnections 
+| where State == "Connected" and UserName == "user@domain.de"
+| project TimeGenerated, UserName, SessionHostName, ClientOS
+| sort by TimeGenerated desc
