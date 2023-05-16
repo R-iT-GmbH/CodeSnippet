@@ -44,7 +44,6 @@ $diskList | Export-CSV $outputCsvDisks
 Write-Host "Beginne mit der Analyse. Dieser Vorgang kann einige Minuten in Anspruch nehmen."
 
 # Grosse Dateien auflisten
-$path = "C:\ISOs"
 $largestFiles = foreach ($disk in $diskList) {
     $path = $disk."Laufwerksname"+"\"
 

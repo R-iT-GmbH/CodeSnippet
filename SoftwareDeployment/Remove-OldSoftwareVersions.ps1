@@ -3,7 +3,7 @@
     Removes old versions of a specified software product.
 
 .DESCRIPTION 
-    Checks if there are multiple installations of a specified software and removes all older versions.
+    Checks if there are multiple installations of a specified software and removes the oldest version.
 
 .NOTES 
     Version:        1.0
