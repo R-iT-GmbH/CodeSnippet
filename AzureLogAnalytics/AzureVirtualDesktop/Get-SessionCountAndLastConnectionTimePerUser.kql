@@ -1,0 +1,3 @@
+// Counts Azure Virtual Desktop Sessions per User
+WVDConnections
+| summarize LastConnectionTime = max(TimeGenerated), SessionCount = count() by UserName
