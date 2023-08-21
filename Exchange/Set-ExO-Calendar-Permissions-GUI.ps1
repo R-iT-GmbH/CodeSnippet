@@ -1,35 +1,176 @@
-# Get the local user group name
-$group = [System.Security.Principal.SecurityIdentifier]'S-1-5-32-545'
-$groupname = $group.Translate([System.Security.Principal.NTAccount]).Value
+﻿<#
+.Synopsis
+   GUI for changing Mailbox Calendar Permissions in Exchange Online
+.DESCRIPTION
+    This script provides a GUI for changing Mailbox Calendar Permissions in Exchange Online.
+    It uses the Exchange Online Management PowerShell module.
+.NOTES
+   Author: R.iT GmbH - Tobias Nawrocki
+   Version: 1.0
+#>
 
-# Get the folder path
-$folder = "C:\Program Files (x86)\virtual.USM-4"
+# Connect to Exchange Online PowerShell
+Import-Module ExchangeOnlineManagement
+Connect-ExchangeOnline
 
-# add if directory $folder exists
-if (Test-Path $folder) {
-    # Create a new access rule for the group
-    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($groupname, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
-
-    # Get the current access control of the folder
-    $acl = Get-Acl $folder
-
-    # Add the rule to the access control
-    $acl.AddAccessRule($rule)
-
-    # Set the new access control to the folder
-    Set-Acl $folder $acl
-    
-} else {
-    Write-Host "Folder $folder does not exist"
-    exit 0
+# Function for getting current Permissions
+function Get-CalendarPermissions {
+    param (
+        [string]$Mailbox,
+        [string]$CalendarFolderName
+    )
+    $Identity = $Mailbox + ":\" + $CalendarFolderName
+    Get-MailboxFolderPermission -Identity $Identity
 }
 
-exit 0
+# Function for setting Permissions
+function Set-CalendarPermissions {
+    param (
+        [string]$Mailbox,
+        [string]$User,
+        [string]$AccessRights,
+        [string]$CalendarFolderName
+    )
+
+    $Identity = $Mailbox + ":\" + $CalendarFolderName
+
+    # Prüfung, ob Berechtigung bereits vorhanden ist
+    $Permission = Get-MailboxFolderPermission -Identity $Identity -User $User -ErrorAction SilentlyContinue
+    if ($Permission -ne $null) {
+        Set-MailboxFolderPermission -Identity $Identity -User $User -AccessRights $AccessRights
+    }
+    else {
+        Add-MailboxFolderPermission -Identity $Identity -User $User -AccessRights $AccessRights
+    }
+    Write-Host "Berechtigungen erfolgreich gesetzt."
+}
+
+# Function for removing Permissions
+function Remove-CalendarPermissions {
+    param (
+        [string]$Mailbox,
+        [string]$User,
+        [string]$AccessRights,
+        [string]$CalendarFolderName
+    )
+
+    $Identity = $Mailbox + ":\" + $CalendarFolderName
+
+    # Prüfung, ob Berechtigung bereits vorhanden ist
+    $Permission = Get-MailboxFolderPermission -Identity $Identity -User $User -ErrorAction SilentlyContinue
+    if ($Permission -ne $null) {
+        try {
+            Remove-MailboxFolderPermission -Identity $Identity -User $User -Confirm:$false
+        }
+        catch {
+            Write-Host "Fehler beim Entfernen der Berechtigung. $($_.Exception.Message)"
+        }
+        Write-Host "Berechtigungen erfolgreich entfernt."
+    }
+    else {
+        Write-Host "Berechtigung nicht vorhanden."
+    }
+}
+
+
+# create GUI
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$Form = New-Object System.Windows.Forms.Form
+$Form.Text = "Exchange Online Calendar Permissions"
+$Form.Size = New-Object System.Drawing.Size(400, 250)
+
+$LabelMailbox = New-Object System.Windows.Forms.Label
+$LabelMailbox.Text = "Postfach:"
+$LabelMailbox.Location = New-Object System.Drawing.Point(10, 20)
+$Form.Controls.Add($LabelMailbox)
+
+$TextBoxMailbox = New-Object System.Windows.Forms.TextBox
+$TextBoxMailbox.Location = New-Object System.Drawing.Point(150, 20)
+$TextBoxMailbox.Width = 200
+$Form.Controls.Add($TextBoxMailbox)
+
+$ButtonGetPermissions = New-Object System.Windows.Forms.Button
+$ButtonGetPermissions.Text = "Abrufen von Berechtigungen"
+$ButtonGetPermissions.Location = New-Object System.Drawing.Point(10, 60)
+$ButtonGetPermissions.Width = 170
+$ButtonGetPermissions.add_Click({
+    $Mailbox = $TextBoxMailbox.Text
+    $CalendarFolderName = Get-CalendarFolderName
+    Get-CalendarPermissions -Mailbox $Mailbox -CalendarFolderName $CalendarFolderName | Out-GridView
+})
+$Form.Controls.Add($ButtonGetPermissions)
+
+$LabelGetMailbox = New-Object System.Windows.Forms.Label
+$LabelGetMailbox.Text = "(leer lassen für eigenen Kalender)"
+$LabelGetMailbox.Location = New-Object System.Drawing.Point(185, 60)
+$LabelGetMailbox.Width = 300
+$Form.Controls.Add($LabelGetMailbox)
+
+$LabelUser = New-Object System.Windows.Forms.Label
+$LabelUser.Text = "Benutzer:"
+$LabelUser.Location = New-Object System.Drawing.Point(10, 100)
+$Form.Controls.Add($LabelUser)
+
+$TextBoxUser = New-Object System.Windows.Forms.TextBox
+$TextBoxUser.Location = New-Object System.Drawing.Point(150, 100)
+$TextBoxUser.Width = 200
+$Form.Controls.Add($TextBoxUser)
+
+$LabelAccessRights = New-Object System.Windows.Forms.Label
+$LabelAccessRights.Text = "Berechtigungen:"
+$LabelAccessRights.Location = New-Object System.Drawing.Point(10, 140)
+$Form.Controls.Add($LabelAccessRights)
+
+$ComboBoxAccessRights = New-Object System.Windows.Forms.ComboBox
+$ComboBoxAccessRights.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$ComboBoxAccessRights.Location = New-Object System.Drawing.Point(150, 140)
+$ComboBoxAccessRights.Width = 150
+$ComboBoxAccessRights.Items.AddRange(@("Editor", "Reviewer", "Author", "PublishingEditor", "Owner"))
+$Form.Controls.Add($ComboBoxAccessRights)
+
+$ButtonSetPermissions = New-Object System.Windows.Forms.Button
+$ButtonSetPermissions.Text = "Berechtigungen setzen"
+$ButtonSetPermissions.Location = New-Object System.Drawing.Point(10, 180)
+$ButtonSetPermissions.Width = 170
+$ButtonSetPermissions.add_Click({
+    $Mailbox = $TextBoxMailbox.Text
+    $User = $TextBoxUser.Text
+    $AccessRights = $ComboBoxAccessRights.SelectedItem.ToString()
+    $CalendarFolderName = Get-CalendarFolderName
+    Set-CalendarPermissions -Mailbox $Mailbox -User $User -AccessRights $AccessRights -CalendarFolderName $CalendarFolderName
+})
+$Form.Controls.Add($ButtonSetPermissions)
+
+$ButtonRemovePermissions = New-Object System.Windows.Forms.Button
+$ButtonRemovePermissions.Text = "Berechtigungen entfernen"
+$ButtonRemovePermissions.Location = New-Object System.Drawing.Point(200, 180)
+$ButtonRemovePermissions.Width = 170
+$ButtonRemovePermissions.add_Click({
+    $Mailbox = $TextBoxMailbox.Text
+    $User = $TextBoxUser.Text
+    $CalendarFolderName = Get-CalendarFolderName
+    Remove-CalendarPermissions -Mailbox $Mailbox -User $User -CalendarFolderName $CalendarFolderName
+})
+$Form.Controls.Add($ButtonRemovePermissions)
+
+# Function for getting Calendar Folder Name - German or English only
+function Get-CalendarFolderName {
+    if ([System.Threading.Thread]::CurrentThread.CurrentUICulture.Name -eq "de-DE") {
+        return "Kalender"
+    }
+    else {
+        return "Calendar"
+    }
+}
+
+$Form.ShowDialog()
 # SIG # Begin signature block
 # MIImqAYJKoZIhvcNAQcCoIImmTCCJpUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU08EhKaFjzgVPHPtNO0yn2vjK
-# aa+ggh+6MIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUbDDfmo2CUhEzgluFpTCvhSeh
+# DmKggh+6MIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -203,34 +344,34 @@ exit 0
 # Q29kZSBTaWduaW5nIENBIFIzNgIQARob6WqXk8OyUG4p7T41tDAJBgUrDgMCGgUA
 # oHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYB
 # BAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0B
-# CQQxFgQU+sOU6RkQIxgEeWHKsftOZOsDf5swDQYJKoZIhvcNAQEBBQAEggIAtPNZ
-# STFNM7Shu5mTPML5Te4uu0LoseVt3OEhnBzu/zo+eg4HoiU2ovNsvv5hqWpGqRkd
-# 4XmF5S2N03CcZyszyZiO2ZyBubslTqnbJ2IYoim/3WOWaFi0KSvjpmuq488gPdYN
-# Y3NKZ0NOWZHytWDNBKOvMRfJAEyKdd5KCRngWpMlBVxkTqJzgxKPOl/rsrj8TBob
-# /gVuHWpzEV9tpWdVRPGqzFNNc/gjlXTQdm5yMlNwMcLQQ7RgYeCiQ8QEkTkkwNOe
-# 3rqmznAJ8J3BadbzglDJ9HG2BsaKdoLqQQ8R72zQu/k2n9yvjtitgroecn4BxKAx
-# SnpEHgK9+O75DlyMyt7HPMJ/NXNZl8x8ROZu3C0gVLbJars6QJ9dnd7KE6NnRCFF
-# qtJvH5lBK7goxFWCeyHPNNs/u4zr5/Qme8Om27rH4fZIqzeS5g+V1U3+LHNagCGO
-# X9BBWu4N2DpTG3/5e5SsyHxNM+7vJUoy6P0o+AQPO9XeAQApm5VXscxe56tzL343
-# 2SlcsqxaAjtxM2Vu1xL5IXDMpbheEY4Fp21ooXkK/XYsCp9Bgqk9llUIvZYWAxQ2
-# My5OU8vD0Qysl4WVijvlA9bzNdAXql7UZwxvCyQEAa/t6RaN9OENN5QXiFf2ejSz
-# LYW2BgzuZJbKXHNudOIu6a4JJe1SdHr+cgbGjjmhggNLMIIDRwYJKoZIhvcNAQkG
+# CQQxFgQUIsYYDERHIQ6X1soUz/Y1HidK+IkwDQYJKoZIhvcNAQEBBQAEggIAYiso
+# IYiLbQI79VaegFaUFHF8r898T2AeJo6lG4wSkB9WnadrFKsEGKT1rLq30RQTLVSU
+# M5/pQc7XrPN8VXQjgl7CyVUTh7/RiD1wrsgZMilrBtH1poR64BXxmUaYn7nYPiRx
+# uco6rABY/A1tBOE3HRWjWcjfxSA23jthFljUdgTPvZh684U8S10GjYe83eWDGrce
+# bGCEgEoDHIVs9eSdSCtjwA8Q8fTvR4rswpk7wPVZOZPLMRh7MskEx+BNcgwkKkas
+# 7P8bVgdP4rY321ui1fjMQjizwkvj7myHv1Pu+d9U6VQU0E4g02d8R6usGsAGhdRr
+# Hby6QPlAiZJKa+zCEN8a0TouslyPfbe6fH9RFHH/9psAc/9sMdg4lHYFtSHDyia6
+# nD9bzEiVHy2mZRQ4Ssg5OH5KFxdPA+FXZHaUx1j4Xf0RnK4dbjdysD7XpvYgrZMF
+# lv5TqQVAnQlQi/NW4OpQaGBWO5YBiwlydXXiepZTFCS5XL55HkxKesuxMT+91rEB
+# /P6JAiCwPFFBKNwadqsCrEqLYa43GQUz3eImFA1exxwDNGGtEhKghmDuy1cZvGoi
+# +Kf6UJuMLJRKLdpSg/5EsfajIIgEgUilmZgYolkEBHBC9mYXxHXMovCJDN4xu3VH
+# a8Fw/fNBQfsVGsfYCCU4PR4MzIVD8JLxPEj+kJahggNLMIIDRwYJKoZIhvcNAQkG
 # MYIDODCCAzQCAQEwgZEwfTELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIg
 # TWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEYMBYGA1UEChMPU2VjdGlnbyBM
 # aW1pdGVkMSUwIwYDVQQDExxTZWN0aWdvIFJTQSBUaW1lIFN0YW1waW5nIENBAhA5
 # TCXhfKBtJ6hl4jvZHSLUMA0GCWCGSAFlAwQCAgUAoHkwGAYJKoZIhvcNAQkDMQsG
-# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwNzEzMTM1MjU3WjA/BgkqhkiG
-# 9w0BCQQxMgQwjPJYuKi1/QIBmn3ydk2fN2znVFkaB5vKXB1bup7Tf36BazD59XDo
-# H17IWQGQfst7MA0GCSqGSIb3DQEBAQUABIICAEwSqzXZaZH0JZH+tL1Q1ajhr32U
-# EW+x7jM3DjqyzzFQYyyKVuDNYMni+YMmA8/GOV9r0pp0skrxxSPhFRIHPITj9yLt
-# 1+b3U5EecuADF6Qwn7cFpNzKKvns+MpN2XwqqPxI16581Drf4leCUigXwVN52HI/
-# m3ywNQWa0dGB1P1sS/0sVlSYkZSFtPMWNtQOTFaj3Hpvwbe9pDm48pF3fow+BUj/
-# b4q+SFiq3wJ9gU/9TB4iVMQOGEcVO+Vjv4xk8JRclRzTH5Q7Ds/EuUaRnMOZtTEp
-# WdXOrwdpzE3xsx23ClFAMVfqZdoiF4bBccNNoEdtZXMdG0Xz7qv4UTY/KFg/Qcrf
-# Y/HX7Y5L2DejYFw3yQTkwN5N/tAt+30vtjzedQR89rwI8sbxxmU/rFnC9lOdMzZF
-# 5C6MFPeGHidH2l9qJQHZLSBQAy7jarS2AHwCajcdHz2naWt33M5+MsjCqADP5/Xr
-# dc7jCVICurQd9pbKFrqmc5L3v6kF0SbbQNQQ5mYqCA0E7Shol085tYNIL1Iq28KL
-# lDMuNagf4pP0axiXA8LAMK6x/gDas4DwNTxSwWp0nOmZh+XFH4BA6PO8V6adeCOL
-# dqzKesOGKEW7G2nqVYweK6n2R1aNfEsxPe70Prz7ISQr6j2kyPK7jy7wGVeR59zn
-# RXifykmi7QMyIEOr
+# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwODIxMTQxMzMwWjA/BgkqhkiG
+# 9w0BCQQxMgQwet+8z5ad9BScwVg+djR+cTK8qUpGtuO6OM7lLtLBIi/zNDR7mRvG
+# UZe83MHX8vrfMA0GCSqGSIb3DQEBAQUABIICAIA5jpfk1uCs3H6j9h0hM1vZ+5tm
+# BltOSbt4vPEGQjl6S6pop7+Q7k2uPKPX+DIdwaftaYCJiD+364eHA+JBAEEOGFda
+# 8vf0WY63NZq4CJQ6IOo5J01rHAjiw7XMLsaaUxnQ0zzhSJdo+ryy+rtXanpsR3L3
+# t3jJeb/lXrnzQx+RWWL5ug1G6BA7Jrp91jqhm7UdHWfnPZl4C6G7b3sRi6tjQwAM
+# rY98HxPGTouh6PR3vnktp/cveHhS222Dkf5dWxt0hbDcwjrqynzaasEBEGY1fvis
+# +WRxUNu2zQS9k7vr1fDCvjT2kPp5/KuVYaZUrcuRwmQh7fdMhaH6UTJVYhrvqLhU
+# YT94kRqtFdXG8Pqz6BIO2zEHXZQl4CtEs7nsYvODyYy9IgQYSooHbM1mZLZzrdSj
+# 8fpXuj5l5hAAhHzamBRqClTAKnEZYkzbWfWpLnIpdqj04yCBFk/Kh5BmkVdrQZLp
+# 8sZ0QjxLbhIPc6meSH6UcLGaDiqgRoFM6vnyi0Ul9xXgY08x4eW4FI5SVLCYrmH2
+# ci7Aa/TFU0UBiUzZ3tDwKujVF58VgXcl9HJjmLk9rW8Z2PwSPdxLcMwmlr1RiLVI
+# BApb0nDqMbpu8v1XPTqbv+dExEDW/fe1FDC3GPs4IQ4K4a7R3OO/8cF3Tj6Zl5f4
+# JgRG+ZCoT3X2nFjt
 # SIG # End signature block
