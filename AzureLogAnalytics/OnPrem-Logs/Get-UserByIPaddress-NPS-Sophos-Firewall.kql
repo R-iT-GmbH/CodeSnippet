@@ -1,0 +1,37 @@
+// Uses syslog messages created by Sophos Firewall and windows security events from network policy server logged in Azure.
+// You have to modify the firewall ip address in line 19.
+// You have to modify the "ClientName" in line 11 and 32 matching your NASIdentifier.
+// If you are trying to resolve a user for a specific ip address, uncomment and modify the last line.
+// 
+// created by R.iT GmbH - Tobias Nawrocki - 2023-08-25
+
+SecurityEvent
+| where EventID == 6272
+| extend xmlData = parse_xml(EventData)
+| where ClientName == "Sophos UTM"
+| project TimeGenerated, SubjectUserName,
+          ConvertedMAC = tostring(replace_string(CallingStationID, "-", ":")),
+          CallingStationID, CalledStationID, NASIdentifier
+| project TimeGenerated, SubjectUserName, ConvertedMAC, CallingStationID, CalledStationID, NASIdentifier
+| where 
+
+Syslog 
+| where Computer in ("192.168.24.1") and Facility == "daemon" 
+| extend 
+    Log_ID = extract(@'(log_id|messageid)="?(\d+)"?', 2, SyslogMessage), 
+    Log_Type = extract(@'log_type="?([\w\s]+)"?', 1, SyslogMessage), 
+    Log_Component = extract(@'log_component="([\w\s]+)"', 1, SyslogMessage), 
+    Log_Subtype = extract(@'log_subtype="([\w]+)"', 1, SyslogMessage), 
+    Status = extract(@'status="?(\w+)"?', 1, SyslogMessage), 
+    Reported_IP = extract(@'reported_ip="?([\w.]+)"?', 1, SyslogMessage), 
+    Src_MAC = toupper(extract(@'src_mac="?([\w:]+)"?', 1, SyslogMessage)) 
+| where Log_Type == "Event" and Log_Component == "DHCP Server" 
+| join kind=inner ( SecurityEvent 
+    | where EventID == 6272 
+    | extend xmlData = parse_xml(EventData) 
+    | where ClientName == "Sophos UTM" 
+    | project TimeGenerated, SubjectUserName, Src_MAC = tostring(replace_string(CallingStationID, "-", ":")), CallingStationID, CalledStationID, NASIdentifier 
+    | project TimeGenerated, SubjectUserName, Src_MAC, CallingStationID, CalledStationID, NASIdentifier ) 
+    on Src_MAC 
+| project TimeGenerated, SubjectUserName, Reported_IP, Src_MAC
+//| where Reported_IP == "192.168.77.24"
