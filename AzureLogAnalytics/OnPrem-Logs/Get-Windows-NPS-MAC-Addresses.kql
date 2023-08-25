@@ -1,0 +1,15 @@
+// Uses windows security events from network policy server logged in Azure.
+// You have to modify the "ClientName" in line 10 matching your NASIdentifier.
+// If you are trying to resolve a user for a specific mac, uncomment and modify the last line.
+// 
+// created by R.iT GmbH - Tobias Nawrocki - 2023-08-25
+
+SecurityEvent
+| where EventID == 6272
+| extend xmlData = parse_xml(EventData)
+| where ClientName == "Sophos UTM"
+| project TimeGenerated, Account,
+          Src_MAC = tostring(replace_string(CallingStationID, "-", ":")),
+          CallingStationID, CalledStationID, NASIdentifier
+| project TimeGenerated, Account, Src_MAC, CallingStationID, CalledStationID, NASIdentifier
+//| where Src_MAC == "B4:C4:FC:FD:31:8D"

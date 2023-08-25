@@ -1,0 +1,17 @@
+// Uses syslog messages created by Sophos Firewall and logged in Azure.
+// You have to modify the firewall ip address in line 8.
+// If you are trying to resolve an ip address for a specific mac, uncomment and modify the last line.
+// 
+// created by R.iT GmbH - Tobias Nawrocki - 2023-08-25
+
+Syslog
+| where Computer in ("192.168.24.1") and Facility == "daemon"
+| extend Log_ID = extract(@'(log_id|messageid)=\"?(\d+)\"?', 2, SyslogMessage),
+Log_Type = extract(@'log_type=\"?([\w\s]+)\"?', 1, SyslogMessage),
+Log_Component = extract(@'log_component=\"([\w\s]+)\"', 1, SyslogMessage),
+Log_Subtype = extract(@'log_subtype=\"([\w]+)\"', 1, SyslogMessage),
+Status = extract(@'status=\"?(\w+)\"?', 1, SyslogMessage),
+Reported_IP = extract(@'reported_ip=\"?([\w\.]+)\"?', 1, SyslogMessage),
+Src_MAC = toupper(extract(@'src_mac=\"?([\w\:]+)\"?', 1, SyslogMessage))
+| where Log_Type == "Event" and Log_Component == "DHCP Server"
+//| where Src_MAC == "B4:C4:FC:FD:31:8D"
